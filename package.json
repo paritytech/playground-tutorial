@@ -24,6 +24,7 @@
   },
   "overrides": {
     "@novasamatech/host-api": "0.7.9-4",
-    "@novasamatech/product-sdk": "0.7.9-4"
+    "@novasamatech/product-sdk": "0.7.9-4",
+    "@polkadot-api/json-rpc-provider": "0.2.0"
   }
 }
