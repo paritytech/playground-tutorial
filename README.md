@@ -10,38 +10,45 @@ You stay on `main` the whole time — every level builds on top of the previous 
 dot mod <your-name>.dot
 ```
 
-The CLI fetches `quests.json`, shows you the level picker, clones the repo, and drops you into the project. From there, follow the level you're on.
+The CLI shows you the level picker, clones the repo, and drops you into the project. From there, follow the level you're on — Claude picks up the right context for each step automatically.
+
+## Prerequisites
+
+- **Polkadot Desktop** — the whole tutorial runs inside it. 
+- A funded account, depending on how far you go:
+  - Level 1: nothing — everything is local.
+  - Level 2+: PAS tokens on **Bulletin** — [faucet](https://faucet.polkadot.io/?parachain=1501).
+  - Level 3+: PAS tokens on **Asset Hub** as well — [faucet](https://faucet.polkadot.io/?parachain=1500). Same account on both chains.
+- Level 3 only: `rustup` and the `cdm` CLI.
 
 ## Levels
 
-Each level is described in [quests.json](quests.json). AI context for each step lives in [.claude/skills/](.claude/skills/).
-
 ### Level 1 — Local Challenger _(~15 min, ★)_
 
-The starting point. Play best-of-3 vs. the computer, results saved in `localStorage`. Mod the UI (theming, emoji sets) or behavior (computer "personality", trash-talk, sound effects), then ship it to your `.dot` domain via `dot deploy`. No contracts, no chain — just product.
+The starting point. Sign in, play best-of-3 vs. the computer, results saved on your device. Make it yours: mod the UI (theming, emoji sets), tweak the computer's behavior (personality, trash-talk, sound effects), or **change the game entirely** — swap rock-paper-scissors for tic-tac-toe, battleship, chess, anything you want. Whatever you build, ship it to your `.dot` domain with `dot deploy`. No contracts, no chain — just product.
 
 ### Level 2 — On-Chain Record _(~20 min, ★★)_
 
-Move game history off the device. Results get uploaded to Bulletin Chain as JSON; the resulting CID is your portable game record. The latest CID per account is tracked in `localStorage` (`rps-game-cid:<address>`) so the app can rehydrate the profile on reload from any client.
+Move your game history off the device and onto Bulletin Chain. Each result is uploaded as content-addressed JSON and your profile rehydrates from there on reload — so your history follows your account across machines.
 
 ### Level 3 — The Leaderboard _(~25 min, ★★★)_
 
-Deploy a PVM smart contract via CDM. Now `address → (CID, points)` lives on Paseo Asset Hub. Anyone can look up any player's history through the leaderboard UI. This is the level where Bulletin (off-chain storage) and the contract (on-chain index) start working together.
+Deploy your own Rust smart contract and use it as a public leaderboard. The contract indexes players and their scores; game data itself stays on Bulletin. Anyone can look up any player's history through the leaderboard UI.
 
 ### Level 4 — Multiplayer _(~30 min, ★★★★)_
 
-Real PvP. Create a room, share a link or QR code, opponent joins, you play live over Statement Store with commit-reveal so neither side can cheat by peeking at the other's move. Both leaderboard entries update at the end.
+Real PvP. Create a room, share a link or QR code, opponent joins, you play live with commit-reveal anti-cheat so neither side can peek at the other's move. Both players' leaderboard entries update at the end.
 
 ## Tech Stack (by level)
 
-| Layer            | Introduced in | Technology                                     |
-| ---------------- | ------------- | ---------------------------------------------- |
-| UI               | Level 1       | React 19 + Vite + TypeScript                   |
-| Wallet           | Level 1       | `@polkadot-apps/signer` (Host API)             |
-| Hosting          | Level 1       | `dot deploy` → Bulletin + DotNS                |
-| Off-chain store  | Level 2       | `@polkadot-apps/bulletin` (CID-addressed JSON) |
-| Smart contract   | Level 3       | `@dotdm/cdm` + PVM (Rust) on Asset Hub         |
-| Live multiplayer | Level 4       | `@polkadot-apps/statement-store`               |
+| Layer            | Introduced in | Technology                          |
+| ---------------- | ------------- | ----------------------------------- |
+| UI               | Level 1       | React 19 + Vite + TypeScript        |
+| Wallet           | Level 1       | Product SDK (host-managed account)  |
+| Hosting          | Level 1       | `dot deploy` → Bulletin + DotNS     |
+| Off-chain store  | Level 2       | Bulletin Chain (content-addressed)  |
+| Smart contract   | Level 3       | `cdm` + PVM (Rust) on Asset Hub     |
+| Live multiplayer | Level 4       | Statement Store (commit-reveal)     |
 
 ## Running locally
 
@@ -50,21 +57,21 @@ npm install
 npm run dev
 ```
 
-Runs on `http://localhost:5173`. Must be opened inside a Polkadot Desktop container for Host API login.
-
-> Levels 2–4 need PAS tokens on Asset Hub ([faucet](https://faucet.polkadot.io/)) and on Bulletin chain ([faucet](https://paritytech.github.io/polkadot-bulletin-chain/authorizations?tab=faucet)).
+Runs on `http://localhost:5173`. Open it inside Polkadot Desktop.
 
 ## Structure
 
 ```
-quests.json                  # Level manifest (read by the CLI)
-.claude/skills/              # Per-level AI context (loaded by Claude)
+quests.json                  # Level manifest
+.claude/skills/              # Per-level AI context
 src/
 ├── App.tsx                  # Routing + account selector
-├── utils.ts                 # SignerManager + localStorage helpers
+├── utils.ts                 # Account flow, helpers
 ├── types.ts                 # Move, Round, GameData, PlayerData
 └── pages/
     ├── Home.tsx             # Mode picker + profile
     ├── MyProfile.tsx        # Stats + history
     └── SoloGame.tsx         # Solo match vs computer
 ```
+
+As you progress through the levels, you'll add `contracts/leaderboard/` and `cdm.json` (Level 3), and multiplayer pages (Level 4).
