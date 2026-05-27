@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useSignerState, signerManager, short } from "./utils.ts";
 import Home from "./pages/Home.tsx";
 import SoloGame from "./pages/SoloGame.tsx";
+import Leaderboard from "./pages/Leaderboard.tsx";
 
-type View = { page: "home" } | { page: "solo" };
+type View = { page: "home" } | { page: "solo" } | { page: "leaderboard" };
 
 export default function App() {
     const { status, accounts, selectedAccount, error } = useSignerState();
@@ -33,7 +34,7 @@ export default function App() {
     return (
         <>
             <header>
-                <h1 onClick={goHome} style={{ cursor: "pointer" }}>RPS</h1>
+                <h1 onClick={goHome} style={{ cursor: "pointer" }}>COSMIC ✦ XO</h1>
                 {accounts.length > 0 ? (
                     <select
                         className="account-select"
@@ -62,6 +63,7 @@ export default function App() {
                     account={account}
                     refreshKey={refreshKey}
                     onSolo={() => setView({ page: "solo" })}
+                    onLeaderboard={() => setView({ page: "leaderboard" })}
                 />
             )}
 
@@ -71,6 +73,10 @@ export default function App() {
 
             {view.page === "solo" && !account && (
                 <div className="empty">Please connect a wallet to play.</div>
+            )}
+
+            {view.page === "leaderboard" && (
+                <Leaderboard selfH160={account?.h160Address} />
             )}
         </>
     );

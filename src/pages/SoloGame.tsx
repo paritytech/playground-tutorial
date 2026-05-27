@@ -1,119 +1,253 @@
-import { useState } from "react";
-import type { Move, Round, RoundResult } from "../types.ts";
+import { useState, useEffect } from "react";
+import type { SignerAccount } from "@polkadot-apps/signer";
+import type { Cell, Move, Round, RoundResult } from "../types.ts";
 import {
-    determineWinner, pointsForResult, randomMove,
-    appendGame,
+    appendGame, asBytes20, boardWinner, cidKey, emptyBoard,
+    ensureMapped, getLeaderboard, loadPlayerData, pointsForResult,
+    PRIMARY_GATEWAY, randomEmptyCell, roundResultFromWinner,
+    setContractAccount, short, uploadToBulletin, winningLine,
 } from "../utils.ts";
 
-const MOVE_EMOJI: Record<Move, string> = { rock: "\u270A", paper: "\u270B", scissors: "\u2702\uFE0F" };
-const RESULT_TEXT: Record<RoundResult, string> = { win: "You win!", loss: "You lose!", draw: "Draw!" };
+const PLAYER: Move = "X";
+const CPU: Move = "O";
 const BEST_OF = 3;
+const NEEDED = Math.ceil(BEST_OF / 2);
+
+const RESULT_TEXT: Record<RoundResult, string> = {
+    win: "Round won!",
+    loss: "Round lost!",
+    draw: "Round draw!",
+};
+
+const MATCH_TEXT: Record<RoundResult, string> = {
+    win: "You won the match!",
+    loss: "You lost the match!",
+    draw: "Match drawn!",
+};
 
 export default function SoloGame({ account, onDone }: {
-    account: { address: string };
+    account: SignerAccount;
     onDone: () => void;
 }) {
     const [rounds, setRounds] = useState<Round[]>([]);
-    const [currentRound, setCurrentRound] = useState<Round | null>(null);
-    const [gameOver, setGameOver] = useState(false);
+    const [board, setBoard] = useState<Cell[]>(emptyBoard);
+    const [playerTurn, setPlayerTurn] = useState(true);
+    const [roundOver, setRoundOver] = useState<RoundResult | null>(null);
+    const [matchOver, setMatchOver] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "uploaded" | "failed">("idle");
+    const [cid, setCid] = useState<string | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [chainStatus, setChainStatus] = useState<"idle" | "writing" | "written" | "failed">("idle");
+    const [chainError, setChainError] = useState<string | null>(null);
 
     const playerWins = rounds.filter(r => r.result === "win").length;
-    const computerWins = rounds.filter(r => r.result === "loss").length;
+    const cpuWins = rounds.filter(r => r.result === "loss").length;
     const roundNumber = rounds.length + 1;
+    const winLine = winningLine(board);
 
-    const overallResult: RoundResult = playerWins > computerWins ? "win" : computerWins > playerWins ? "loss" : "draw";
-    const pts = pointsForResult(overallResult);
+    const overallResult: RoundResult =
+        playerWins > cpuWins ? "win" : cpuWins > playerWins ? "loss" : "draw";
+    const finalPts = pointsForResult(overallResult);
 
-    const pickMove = (move: Move) => {
-        if (currentRound || gameOver) return;
+    // CPU plays after the player.
+    useEffect(() => {
+        if (playerTurn || roundOver || matchOver) return;
+        const timer = setTimeout(() => {
+            setBoard(prev => {
+                if (boardWinner(prev) !== null) return prev;
+                const idx = randomEmptyCell(prev);
+                if (idx === undefined) return prev;
+                const next = prev.slice();
+                next[idx] = CPU;
+                return next;
+            });
+            setPlayerTurn(true);
+        }, 600);
+        return () => clearTimeout(timer);
+    }, [playerTurn, roundOver, matchOver]);
 
-        const opponentMove = randomMove();
-        const result = determineWinner(move, opponentMove);
-        const round: Round = { playerMove: move, opponentMove, result };
+    // Check for round end.
+    useEffect(() => {
+        if (roundOver) return;
+        const w = boardWinner(board);
+        if (w === null) return;
+        const result = roundResultFromWinner(w, PLAYER);
+        setRoundOver(result);
 
-        setCurrentRound(round);
-
+        const newRounds = [...rounds, { result, board: board.slice() }];
         setTimeout(() => {
-            const newRounds = [...rounds, round];
             setRounds(newRounds);
-            setCurrentRound(null);
+            const pw = newRounds.filter(r => r.result === "win").length;
+            const cw = newRounds.filter(r => r.result === "loss").length;
 
-            const w = newRounds.filter(r => r.result === "win").length;
-            const l = newRounds.filter(r => r.result === "loss").length;
-            const needed = Math.ceil(BEST_OF / 2);
-
-            if (w >= needed || l >= needed || newRounds.length >= BEST_OF) {
-                setGameOver(true);
-                // Auto-save to localStorage
-                const finalResult: RoundResult = w > l ? "win" : l > w ? "loss" : "draw";
-                const finalPts = pointsForResult(finalResult);
+            if (pw >= NEEDED || cw >= NEEDED || newRounds.length >= BEST_OF) {
+                const final: RoundResult = pw > cw ? "win" : cw > pw ? "loss" : "draw";
                 appendGame(account.address, {
                     rounds: newRounds,
-                    result: finalResult,
-                    pointsChange: finalPts,
+                    result: final,
+                    pointsChange: pointsForResult(final),
                     timestamp: Math.floor(Date.now() / 1000),
                 });
                 setSaved(true);
+                setMatchOver(true);
+
+                // Upload full history to Bulletin, then write CID + points delta to the
+                // on-chain leaderboard. Bulletin upload must succeed first because the
+                // contract only stores the CID pointer (the JSON itself stays off-chain).
+                setUploadStatus("uploading");
+                const fullData = loadPlayerData(account.address);
+                const bytes = new TextEncoder().encode(JSON.stringify(fullData));
+                const matchPts = pointsForResult(final);
+                (async () => {
+                    let newCid: string;
+                    try {
+                        newCid = await uploadToBulletin(bytes);
+                    } catch (err: any) {
+                        setUploadError(err?.message ?? String(err));
+                        setUploadStatus("failed");
+                        return;
+                    }
+                    localStorage.setItem(cidKey(account.address), newCid);
+                    setCid(newCid);
+                    setUploadStatus("uploaded");
+
+                    setChainStatus("writing");
+                    try {
+                        const signer = account.getSigner();
+                        await ensureMapped(account.address, signer);
+                        await setContractAccount(account.address, signer);
+                        const lb = await getLeaderboard();
+                        await lb.updateResult.tx(asBytes20(account), newCid, BigInt(matchPts));
+                        setChainStatus("written");
+                    } catch (err: any) {
+                        setChainError(err?.message ?? String(err));
+                        setChainStatus("failed");
+                    }
+                })();
             }
-        }, 1500);
+        }, 1200);
+    }, [board, roundOver, rounds, account.address]);
+
+    const pickCell = (i: number) => {
+        if (!playerTurn || roundOver || matchOver) return;
+        if (board[i] !== null) return;
+        const next = board.slice();
+        next[i] = PLAYER;
+        setBoard(next);
+        setPlayerTurn(false);
+    };
+
+    const nextRound = () => {
+        setBoard(emptyBoard());
+        setRoundOver(null);
+        setPlayerTurn(true);
     };
 
     return (
         <div className="game-page">
-            <h2>Solo - Best of {BEST_OF}</h2>
+            <h2>Solo — Best of {BEST_OF}</h2>
 
             <div className="score-display">
-                <div>You: <span>{playerWins}</span></div>
+                <div>You (X): <span>{playerWins}</span></div>
                 <div>Round <span>{Math.min(roundNumber, BEST_OF)}</span>/{BEST_OF}</div>
-                <div>CPU: <span>{computerWins}</span></div>
+                <div>CPU (O): <span>{cpuWins}</span></div>
             </div>
 
-            {currentRound && (
-                <div className="round-result">
-                    <div className="round-result-moves">
-                        <span>{MOVE_EMOJI[currentRound.playerMove]}</span>
-                        <span className="round-result-vs">VS</span>
-                        <span>{MOVE_EMOJI[currentRound.opponentMove]}</span>
-                    </div>
-                    <div className={`round-result-text ${currentRound.result}`}>
-                        {RESULT_TEXT[currentRound.result]}
-                    </div>
+            <div className="ttt-board">
+                {board.map((cell, i) => {
+                    const inWin = winLine && winLine.includes(i as 0 | 1 | 2);
+                    const cls = [
+                        "ttt-cell",
+                        cell === "X" ? "x" : cell === "O" ? "o" : "",
+                        cell ? "filled" : "",
+                        inWin ? "win" : "",
+                    ].filter(Boolean).join(" ");
+                    return (
+                        <button
+                            key={i}
+                            className={cls}
+                            onClick={() => pickCell(i)}
+                            disabled={!playerTurn || !!roundOver || matchOver || cell !== null}
+                            aria-label={`cell ${i + 1}`}
+                        >
+                            {cell ?? ""}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="turn-indicator">
+                {matchOver
+                    ? " "
+                    : roundOver
+                        ? RESULT_TEXT[roundOver]
+                        : playerTurn ? "Your turn" : "CPU thinking..."}
+            </div>
+
+            {roundOver && !matchOver && (
+                <div style={{ textAlign: "center", marginTop: 16 }}>
+                    <button className="btn btn-primary" onClick={nextRound}>
+                        Next round &rarr;
+                    </button>
                 </div>
             )}
 
-            {!gameOver && !currentRound && (
-                <div className="move-picker">
-                    {(["rock", "paper", "scissors"] as Move[]).map(m => (
-                        <div key={m}>
-                            <button className="move-btn" onClick={() => pickMove(m)}>
-                                {MOVE_EMOJI[m]}
-                            </button>
-                            <div className="move-label">{m}</div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {gameOver && (
+            {matchOver && (
                 <div className="round-result">
                     <div className={`round-result-text ${overallResult}`} style={{ fontSize: 24, marginBottom: 8 }}>
-                        {overallResult === "win" ? "You won the match!" :
-                         overallResult === "loss" ? "You lost the match!" : "Match drawn!"}
+                        {MATCH_TEXT[overallResult]}
                     </div>
                     <div style={{ fontSize: 14, color: "var(--text2)", marginBottom: 16 }}>
-                        {playerWins} - {computerWins} ({pts > 0 ? `+${pts}` : pts} pts)
+                        {playerWins} &mdash; {cpuWins} ({finalPts > 0 ? `+${finalPts}` : finalPts} pts)
                     </div>
 
                     <div className="history-card-rounds" style={{ justifyContent: "center", marginBottom: 16 }}>
                         {rounds.map((r, i) => (
-                            <span key={i} className="round-badge">
-                                {MOVE_EMOJI[r.playerMove]} vs {MOVE_EMOJI[r.opponentMove]}
+                            <span key={i} className={`round-badge ${r.result}`}>
+                                {r.result === "win" ? "W" : r.result === "loss" ? "L" : "D"}
                             </span>
                         ))}
                     </div>
 
-                    {saved && <div className="status" style={{ color: "var(--success)" }}>Saved to local storage</div>}
+                    {saved && <div className="status" style={{ color: "var(--success)" }}>Saved locally</div>}
+
+                    {uploadStatus === "uploading" && (
+                        <div className="status">Uploading to Bulletin Chain...</div>
+                    )}
+                    {uploadStatus === "uploaded" && cid && (
+                        <div className="bulletin-card">
+                            <div className="bulletin-label">Saved on-chain ✦</div>
+                            <a
+                                className="bulletin-cid"
+                                href={`${PRIMARY_GATEWAY}${cid}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={cid}
+                            >
+                                {short(cid)}
+                            </a>
+                        </div>
+                    )}
+                    {uploadStatus === "failed" && (
+                        <div className="status" style={{ color: "var(--danger)" }}>
+                            Bulletin upload failed: {uploadError ?? "unknown"}
+                        </div>
+                    )}
+
+                    {chainStatus === "writing" && (
+                        <div className="status">Writing to leaderboard contract...</div>
+                    )}
+                    {chainStatus === "written" && (
+                        <div className="status" style={{ color: "var(--success)" }}>
+                            Leaderboard updated on-chain ✦
+                        </div>
+                    )}
+                    {chainStatus === "failed" && (
+                        <div className="status" style={{ color: "var(--danger)" }}>
+                            Contract write failed: {chainError ?? "unknown"}
+                        </div>
+                    )}
 
                     <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                         <button className="btn btn-primary" onClick={onDone}>

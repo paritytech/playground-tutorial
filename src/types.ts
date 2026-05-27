@@ -1,11 +1,12 @@
-export type Move = "rock" | "paper" | "scissors";
+export type Move = "X" | "O";
+
+export type Cell = Move | null;
 
 export type RoundResult = "win" | "loss" | "draw";
 
 export interface Round {
-    playerMove: Move;
-    opponentMove: Move;
     result: RoundResult;
+    board: Cell[];
 }
 
 export interface GameData {

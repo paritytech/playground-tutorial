@@ -1,18 +1,76 @@
 import { useState, useEffect } from "react";
-import { loadPlayerData, short } from "../utils.ts";
-import type { PlayerData, Move } from "../types.ts";
+import type { SignerAccount } from "@polkadot-apps/signer";
+import {
+    asBytes20, cidKey, fetchFromGateway, getLeaderboard, loadPlayerData,
+    PRIMARY_GATEWAY, short,
+} from "../utils.ts";
+import type { PlayerData } from "../types.ts";
 
-const MOVE_EMOJI: Record<Move, string> = { rock: "\u270A", paper: "\u270B", scissors: "\u2702\uFE0F" };
+type Source = "local" | "bulletin" | "chain";
 
 export default function MyProfile({ account, refreshKey }: {
-    account: { address: string };
+    account: SignerAccount;
+    onLeaderboard?: () => void;
     refreshKey?: number;
 }) {
     const [data, setData] = useState<PlayerData | null>(null);
+    const [source, setSource] = useState<Source>("local");
+    const [cid, setCid] = useState<string | null>(null);
+    const [chainPoints, setChainPoints] = useState<number | null>(null);
     const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
-        setData(loadPlayerData(account.address));
+        // 1) Start from local data — instant render.
+        const local = loadPlayerData(account.address);
+        setData(local);
+        setSource("local");
+
+        // 2) Fetch contract state: points + CID pointer. The contract is the
+        //    canonical leaderboard — Bulletin holds the round-level JSON.
+        let cancelled = false;
+        (async () => {
+            try {
+                const lb = await getLeaderboard();
+                const h160 = asBytes20(account);
+                const [pointsRes, cidRes] = await Promise.all([
+                    lb.getPlayerPoints.query(h160),
+                    lb.getPlayerCid.query(h160),
+                ]);
+                if (cancelled) return;
+                if (pointsRes.success) {
+                    setChainPoints(Number(pointsRes.value as bigint));
+                }
+                if (cidRes.success) {
+                    const chainCid = cidRes.value as string;
+                    if (chainCid) {
+                        setCid(chainCid);
+                        setSource("chain");
+                        // 3) Resolve game-level data from Bulletin using the on-chain CID.
+                        try {
+                            const bytes = await fetchFromGateway(chainCid);
+                            if (cancelled) return;
+                            const parsed = JSON.parse(new TextDecoder().decode(bytes)) as PlayerData;
+                            setData(parsed);
+                        } catch { /* keep local data */ }
+                        return;
+                    }
+                }
+                // No on-chain CID → try the locally-cached CID pointer.
+                const stored = localStorage.getItem(cidKey(account.address));
+                if (stored) {
+                    setCid(stored);
+                    try {
+                        const bytes = await fetchFromGateway(stored);
+                        if (cancelled) return;
+                        const parsed = JSON.parse(new TextDecoder().decode(bytes)) as PlayerData;
+                        setData(parsed);
+                        setSource("bulletin");
+                    } catch { /* keep local */ }
+                }
+            } catch { /* keep local data, contract unreachable */ }
+        })();
+
+        return () => { cancelled = true; };
     }, [account.address, refreshKey]);
 
     if (!data || data.totalGames === 0) {
@@ -27,6 +85,7 @@ export default function MyProfile({ account, refreshKey }: {
     }
 
     const winRate = data.totalGames > 0 ? Math.round((data.wins / data.totalGames) * 100) : 0;
+    const displayPoints = chainPoints !== null ? chainPoints : data.points;
 
     return (
         <div className="profile-card">
@@ -34,7 +93,7 @@ export default function MyProfile({ account, refreshKey }: {
                 <div>
                     <div className="profile-address">{short(account.address)}</div>
                     <div className="profile-points">
-                        {data.points > 0 ? `+${data.points}` : data.points} pts
+                        {displayPoints > 0 ? `+${displayPoints}` : displayPoints} pts
                     </div>
                 </div>
                 <div className="profile-stats-mini">
@@ -42,8 +101,49 @@ export default function MyProfile({ account, refreshKey }: {
                     <span className="profile-stat-loss">{data.losses}L</span>
                     <span className="profile-stat-draw">{data.draws}D</span>
                     <span className="profile-stat-rate">{winRate}%</span>
-                    <span className="profile-expand">{expanded ? "\u25B2" : "\u25BC"}</span>
+                    <span className="profile-expand">{expanded ? "▲" : "▼"}</span>
                 </div>
+            </div>
+
+            <div className={`profile-source ${source}`}>
+                {source === "chain" ? (
+                    <>
+                        <span className="profile-source-dot" />
+                        <span>On contract ✦</span>
+                        {cid && (
+                            <a
+                                className="profile-source-cid"
+                                href={`${PRIMARY_GATEWAY}${cid}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={cid}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                {short(cid)}
+                            </a>
+                        )}
+                    </>
+                ) : source === "bulletin" && cid ? (
+                    <>
+                        <span className="profile-source-dot" />
+                        <span>On Bulletin ✦</span>
+                        <a
+                            className="profile-source-cid"
+                            href={`${PRIMARY_GATEWAY}${cid}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={cid}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {short(cid)}
+                        </a>
+                    </>
+                ) : (
+                    <>
+                        <span className="profile-source-dot local" />
+                        <span>Local only — checking contract...</span>
+                    </>
+                )}
             </div>
 
             {expanded && (
@@ -53,8 +153,8 @@ export default function MyProfile({ account, refreshKey }: {
                             <span className="profile-game-mode">vs CPU</span>
                             <span className="profile-game-rounds">
                                 {game.rounds.map((r, i) => (
-                                    <span key={i} title={`${r.playerMove} vs ${r.opponentMove}`}>
-                                        {MOVE_EMOJI[r.playerMove]}
+                                    <span key={i} className={`round-pip ${r.result}`} title={r.result}>
+                                        {r.result === "win" ? "W" : r.result === "loss" ? "L" : "D"}
                                     </span>
                                 ))}
                             </span>
