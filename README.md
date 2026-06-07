@@ -1,5 +1,8 @@
 # Playground Tutorial — Rock Paper Scissors
 
+> [!WARNING]
+> The following is a prototype, reference implementation, and proof-of-concept. This open source code is provided for research, experimentation, and developer education only. This code has not been audited, is actively experimental, and may contain bugs, vulnerabilities, or incomplete features. Use at your own risk.
+
 A guided, hands-on tutorial that takes a plain web app and turns it into a full on-chain product on Polkadot, one step at a time. You start with a local Rock Paper Scissors game and unlock a new layer of the stack at each level.
 
 You stay on `main` the whole time — every level builds on top of the previous one in the same working tree. No branch hopping, no separate checkouts.
@@ -81,3 +84,7 @@ src/
 ```
 
 As you progress through the levels, you'll add `contracts/leaderboard/` and `cdm.json` (Level 3), and multiplayer pages (Level 4).
+
+## Licence
+
+Licensed under the [GNU General Public License v3.0](./LICENSE) (GPL-3.0-only). Experimental proof-of-concept code developed and published by Parity. See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities.

@@ -4,3 +4,15 @@ target/
 .cdm/
 Cargo.lock
 package-lock.json
+
+# Secrets — never publish a stray .env (.env.local does NOT cover a bare .env)
+.env*
+!.env.example
+
+# OS / editor cruft
+.DS_Store
+
+# Per-developer AI session state (keep .claude/skills, CLAUDE.md — those are intentional team config)
+.claude/sessions/
+.claude/cache/
+.claude/settings.local.json
