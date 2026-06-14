@@ -31,12 +31,13 @@ trash-talk, sound). Contract/chain changes are out of scope for this level.
 
 ## Runtime requirements
 
-- **Polkadot Desktop ≥ 0.7.5** — ships the host-api 0.8.x wire protocol the
-  current SDK targets.
+- **A Polkadot host** — `dot.li` in a browser, or the Polkadot Desktop app
+  (≥ 0.7.5). The host ships the host-api 0.8.x wire protocol the current SDK
+  targets.
 - **Polkadot mobile (v2)** if signing on a paired phone.
 - Plain browser works for UI iteration via the `DevProvider` fallback (dev
   accounts: Alice, Bob, …) — but host signing and deploy verification need
-  Polkadot Desktop.
+  a Polkadot host (`dot.li` or the Polkadot Desktop app).
 
 ## Packages in play
 
@@ -86,7 +87,7 @@ signing path internally — no manual signer wiring, no `signerType` to pass.
 
 ## Common gotchas
 
-- **Host login only works inside Polkadot Desktop / dot.li.** In a plain
+- **Host login only works inside a Polkadot host (`dot.li` or the Polkadot Desktop app).** In a plain
   browser the app falls back to `DevProvider` dev accounts — fine for UI
   modding, useless for verifying host signing.
 - **Keep `PRODUCT_ID` consistent.** It scopes the host product account and is
@@ -102,7 +103,7 @@ signing path internally — no manual signer wiring, no `signerType` to pass.
 2. Deploy: `dot deploy` from the terminal (or `bulletin-deploy ./dist <name>.dot`);
    in RevX, use its built-in `.dot` deploy if the environment has it enabled —
    otherwise hand off to the DOT CLI
-3. Open `<name>.dot` inside Polkadot Desktop ≥ 0.7.5 to verify
+3. Open `<name>.dot` inside a Polkadot host (`dot.li` in a browser, or Polkadot Desktop ≥ 0.7.5) to verify
 
 ## Do NOT
 

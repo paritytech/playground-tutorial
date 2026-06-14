@@ -87,8 +87,8 @@ if (cid) {
   (Level 1 flow) before the first upload. Dev-provider accounts outside the
   host won't have Bulletin allowance.
 - **Reads are container-only.** `fetchBytes` routes through the host's
-  preimage subscription — it works inside Polkadot Desktop / dot.li, not in a
-  plain browser. For manual verification, paste the CID into the public IPFS
+  preimage subscription — it works inside a Polkadot host (`dot.li` or the
+  Polkadot Desktop app), not in a plain browser. For manual verification, paste the CID into the public IPFS
   gateway URL instead.
 - **The SDK owns chunking and CIDs.** Don't hand-roll blake2b/multihash CID
   computation — `store()` returns the CID, and `calculateCid` is exported if

@@ -4,8 +4,8 @@ title: RPS architecture & SDK — START HERE
 
 # Start here (AI context overview)
 
-Rock Paper Scissors is a **Polkadot product-SDK app** that runs inside the
-**Polkadot Desktop host** (and dot.li iframe). The repo on `main` is the
+Rock Paper Scissors is a **Polkadot product-SDK app** that runs inside a
+**Polkadot host** — the Polkadot Desktop app, or the `dot.li` web host (iframe) in a browser. The repo on `main` is the
 **Level 1 starting state**: a best-of-3 local game with host-managed accounts
 via `SignerManager` and results in localStorage. Levels 2–4 (Bulletin storage,
 leaderboard contract, multiplayer) are **built by the developer on top of it**,

@@ -19,7 +19,7 @@ The CLI shows you the level picker, clones the repo, and drops you into the proj
 
 ## Prerequisites
 
-- **Polkadot Desktop** — the whole tutorial runs inside it. 
+- **A laptop** — you'll need a computer; the tutorial isn't designed for mobile.
 - A funded account, depending on how far you go:
   - Level 1: nothing — everything is local.
   - Level 2+: PAS tokens on **Bulletin** — [faucet](https://faucet.polkadot.io/?parachain=1501).
@@ -62,7 +62,7 @@ npm install
 npm run dev
 ```
 
-Runs on `http://localhost:5173`. Open it inside Polkadot Desktop.
+Runs on `http://localhost:5173`. Open it inside a Polkadot host — `dot.li` in your browser, or the Polkadot Desktop app.
 
 > Deploying **your own copy** (own `.dot` name, published to the playground)?
 > Follow the step-by-step [DEPLOYMENT.md](./DEPLOYMENT.md). This app has no

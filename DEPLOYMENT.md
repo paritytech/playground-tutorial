@@ -107,7 +107,7 @@ pause (DotNS's anti-front-running window); it's not stuck.
 3. publishes the app to the **playground registry**, which puts it in the
    playground's Apps grid and awards your account its deploy XP,
 4. prints the result: your live URL (`https://<name>.dot.li`, or
-   `<name>.dot` inside Polkadot Desktop/Mobile) plus the app, IPFS, and
+   `<name>.dot` inside a Polkadot host) plus the app, IPFS, and
    metadata CIDs.
 
 ### Deploying with a mnemonic instead of the phone
@@ -136,8 +136,8 @@ account, with no phone approvals. Two things to know:
 - Open `https://<name>.dot.li`: your app, served from Bulletin. Use a real
   browser; fetching the URL with curl/scripts returns the gateway's
   client-side resolver shell, not your HTML.
-- Open the playground's **Apps** tab (the playground app inside Polkadot
-  Desktop / Mobile). Your card should appear, newest first.
+- Open the playground's **Apps** tab (the playground app inside a Polkadot
+  host). Your card should appear, newest first.
 - Check the playground's **Leaderboard**: your account earned its deploy
   XP.
 - Play a round of Rock Paper Scissors in your instance.
@@ -154,5 +154,5 @@ All of these were hit for real while writing this guide.
 | `<name>.dot requires ProofOfPersonhoodFull, but this signer is NoStatus` | the name is too short to be open to all accounts; pick a longer one (9+ characters) |
 | Preflight shows `moddable: ... github.com/paritytech/...` | your git `origin` is the upstream repo, not your fork; `git remote set-url origin <your fork URL>` |
 | Deploy pauses ~60s after the first phone approval | DotNS's mandatory commit-reveal wait (front-running protection), not a hang |
-| App loads but shows no data in a plain desktop browser | expected: chain/storage access flows through the host. Open it inside Polkadot Desktop/Mobile, or via its `.dot.li` URL |
+| App loads but shows no data in a plain desktop browser | expected: chain/storage access flows through the host. Open it inside a Polkadot host — its `.dot.li` URL in a browser, or the Polkadot Desktop/Mobile app |
 | `.dot.li` URL returns a generic Polkadot page to curl/scripts | the gateway serves a client-side resolver shell; only a real browser renders your app |
