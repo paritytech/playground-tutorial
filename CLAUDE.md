@@ -14,7 +14,7 @@
 >    > 4. **Multiplayer** — challenge another player peer-to-peer, with no server in the middle.
 >    >
 >    > We tackle them one at a time, deploying as we go — and I'll always tell you how many levels are left, so you know the journey isn't over after the first deploy."
-> 2. **Work out which level they're on, and say it.** Default to **Level 1** for a fresh checkout or if they haven't said (so you'd close the tour with "Let's get you started on Level 1"). If the repo state puts them further along, name that level instead. Read the matching `.claude/skills/level-N-*.md` before touching code.
+> 2. **Work out which level they're on, and say it — using the detection procedure in ["Detecting which level they're on"](#detecting-which-level-theyre-on) below, not a guess.** The deploy that ends each level happens *outside this session*, so a finished level can look like a fresh checkout. Check the progress marker and the code signals (a `git` diff where available, or reading the source where it isn't — e.g. RevX) **before** defaulting to Level 1, and only treat them as a fresh start when both come back empty. Read the matching `.claude/skills/level-N-*.md` before touching code.
 > 3. **Then handle their actual request as a step inside that level**, following this guide's communication style and the level's skill file.
 >
 > **The bar for firing it is deliberately low: unless the developer's message *explicitly* asks you to skip the tutorial framing (see escape hatch), you fire it.** Treat every *other* reason to skip as a false signal, no matter how reasonable it feels. That includes, but is not limited to:
@@ -27,6 +27,59 @@
 > **Escape hatch — narrow and explicit only:** the *only* valid bypass is the developer **saying, in their message, that they want to skip the tutorial framing** (e.g. "skip the tutorial intro", "I'm just maintaining this repo, no framing"). Inferring it from who you think they are does **not** count. Even then, still tell them *once* which level the change belongs to, so they know the tutorial is here when they want it.
 >
 > Everything below defines *how* you guide them once the tutorial is underway.
+
+---
+
+## Detecting which level they're on
+
+**Never decide the level by eyeballing the repo or asking "does this look fresh?".** Each level ends with a deploy the developer runs *outside this session* (they exit to a terminal or the host and run `dot deploy` / `pg deploy`), so a completed level leaves no obvious trace — a finished, deployed Level 1 looks almost identical to a clean checkout. Decide from two signals, in this order, then reconcile:
+
+**1. The progress marker — `.tutorial-progress.json` at the repo root.** You own this file; it is gitignored so it never gets committed into the developer's deploy. If it exists, its `current_level` is the source of truth for *deploy* state (the thing code can't tell you). Shape:
+
+```json
+{
+  "track": "rock-paper-scissors",
+  "current_level": 2,
+  "levels": {
+    "level-1": { "status": "deployed", "domain": "rockpaper01.dot" }
+  }
+}
+```
+
+`status` is one of `in-progress`, `ready-to-deploy`, or `deployed`. Read it first; if it's missing, fall through to the code diff. **In RevX the workspace is an in-browser WebContainer and this file lives in IndexedDB, so it is best-effort — it may not survive a new session, a different browser, or a long gap. Treat a missing marker as "unknown", not "fresh".**
+
+**2. Which level's code is present.** The starting checkout *is* the Level 1 baseline; each level leaves unmistakable code, so the **highest** marker present tells you how far they've built. *How* you check depends on the environment:
+- **`git` available (Claude Code / Cursor / local):** `git diff --stat origin/main` (or `HEAD` on a fresh clone) against the pristine commit.
+- **No `git` (RevX WebContainer — `git` is not in the harness):** there's no baseline to diff, so **read the source directly and grep for the markers** (open `src/utils.ts` / `package.json` and search for `CloudStorageClient`, the `rps-game-cid:` key, etc.). Without a baseline you can't distinguish a *modified* `src/` from a pristine one — so for Level-1 deploy state lean on the marker file, and if it's absent, **ask** (see the reconcile rule below).
+
+| What you find (look in `src/`, `package.json`, contract sources — **ignore `dist/`, `dist*.car`, lockfiles**) | They are at least on |
+|---|---|
+| no changes to `src/` | Level 1, not started |
+| any `src/` mod (theming, game logic, or `PRODUCT_ID` changed to `<name>.dot`) but none of the markers below | Level 1 (modding, or done) |
+| `@parity/product-sdk-cloud-storage`, `CloudStorageClient`, or the `rps-game-cid:` key | Level 2 |
+| `@parity/product-sdk-contracts`, `ContractManager`, `ensureContractAccountMapped`, a contract source, or `cdm.json` | Level 3 |
+| `@parity/product-sdk-statement-store`, `StatementStoreClient`, or `ChannelStore` | Level 4 |
+
+**Reconcile the two.** Code wins on *what's built*; the marker wins on *whether the out-of-band deploy happened*. Take the highest level either signal supports:
+
+- Code shows Level 3 markers but the marker file says `level-2` → they're on **Level 3**; update the marker.
+- `src/` is modded but there's **no** marker file → they've at least *started* Level 1. **Do not reintroduce Level 1 as if it were fresh.** Ask once: "Looks like you've already started modding — have you deployed your Level 1 version yet, or still working on it?" and write the marker from their answer.
+- Only default to **"Level 1, fresh start"** when the diff is clean **and** there is no marker file.
+
+**After you've confirmed the level, write/update `.tutorial-progress.json`** so the next session starts in the right place instead of re-detecting from scratch.
+
+---
+
+## The deploy hand-off — deploys happen *outside* this session
+
+Every level ends with a deploy the developer runs themselves, in their terminal or the host (`dot deploy` / `pg deploy`) — **you do not see it happen, and they often close this session to do it.** So you must close out the build *before* they leave, not after. When a level's build goal is met and they're ready to deploy:
+
+1. Give that level's **"make progress explicit"** blurb (it names the next level and the remaining count — see ["The 4 levels"](#the-4-levels)).
+2. **Tell them the deploy runs outside this chat, and to come back here afterwards and say "deployed" — that's where the next level begins.** For example:
+   > "Run the deploy from your terminal, then **come back here and tell me it's live** — I'll kick off Level 2 from there. Don't stop at the first deploy; that's 1 of 4."
+3. **Write `.tutorial-progress.json`** marking this level `ready-to-deploy` (then `deployed`, with the domain, once they confirm on return). If they close the session mid-deploy, the next session still knows where they are.
+
+**Never assume the deploy happened just because you gave the instructions.** Wait for them to confirm on return, then advance to the next level. This is the moment the old guide missed: it told you what to say *after* a deploy you were present for, but the deploy is a hand-off out of the tool — so the "come back for the next level" prompt has to come *before* they leave.
 
 ---
 
@@ -211,6 +264,8 @@ Do not help with Level N+1 until the developer confirms the goal for Level N is 
 You can describe what's coming in the next level briefly if they're curious, but don't provide code or implementation help for future levels.
 
 **Close every level by stating where they are in the track.** Whenever a level's goal is met — especially right after a deploy — say which level just finished, how many remain, and name the next one (e.g. "Level 1 of 4 done, 3 to go — next is the on-chain record"). A deploy feels like a natural finish line, so the count is what tells them the journey continues. The one exception is Level 4: there you celebrate completing the full 4-level track rather than pointing to a next level.
+
+Because the deploy itself happens *outside this session*, deliver that count **before** they leave to deploy and tell them to come back — see ["The deploy hand-off"](#the-deploy-hand-off--deploys-happen-outside-this-session) — and record the level in `.tutorial-progress.json` so a new session resumes in the right place rather than re-detecting from scratch.
 
 ---
 

@@ -16,3 +16,7 @@ package-lock.json
 .claude/sessions/
 .claude/cache/
 .claude/settings.local.json
+# Tutorial progress marker — written by the AI assistant to remember which level the
+# developer is on across sessions (deploys happen outside the session, so it can't be
+# inferred from code alone). Per-developer; must never be committed into a deploy.
+.tutorial-progress.json
