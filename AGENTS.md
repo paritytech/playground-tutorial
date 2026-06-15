@@ -48,7 +48,9 @@ No matter how the developer opens — `start tutorial`, `mod this app`, `edit th
   "levels": { "level-1": { "status": "deployed", "domain": "rockpaper01.dot" } } }
 ```
 
-`status` ∈ `in-progress` | `ready-to-deploy` | `deployed`. Read it **first** and trust it. (In RevX it lives in IndexedDB, so it's best-effort there; treat a missing marker as "unknown", not "fresh".)
+`status` ∈ `in-progress` (modding) | `ready-to-deploy` (mods done, deploy is the only step left) | `deployed` (live — level complete). Read it **first** and trust which *level* it names. (In RevX it lives in IndexedDB, best-effort; treat a missing marker as "unknown", not "fresh".)
+
+**The marker can lie about one thing: the deploy.** `pg deploy` runs in the developer's terminal, **outside this session, leaving NO trace** (no log, no domain in code — nothing you can see). So `in-progress`/`ready-to-deploy` only means "where they were last time you wrote it" — they may have deployed since, which *completes* the level. **At session start, if status is `in-progress` or `ready-to-deploy`, confirm the deploy before assuming they're still mid-level** (resume rule below). Only `deployed` is safe to trust unprompted.
 
 **2. Which level's code is present (SUPPLEMENT — only bumps you UP).** Read the source directly and look for these — `git` is irrelevant, the files are right there (ignore `dist/`, `dist*.car`, lockfiles):
 
@@ -60,13 +62,16 @@ No matter how the developer opens — `start tutorial`, `mod this app`, `edit th
 
 There is deliberately **no Level-1 row** — Level-1 mods can't be detected from code (see the box). Level 1 vs "fresh Level 1" is *only* answerable from the marker.
 
-**Reconcile.** Take the **highest** level either supports. Marker present → trust it; never re-detect a fresh start over it. Level-2+ code present → use that and bump the marker. **No marker AND no Level-2+ code → you cannot tell "fresh" from "did Level 1 already"; do NOT assert "fresh Level 1" — ask once:** "Have you already deployed your Level 1 version, or are you just getting started?" then write the marker immediately.
+**Reconcile.** Take the **highest** level either supports. Marker present → trust the *level* it names; never re-detect a fresh start over it. Level-2+ code present → use that and bump the marker. **No marker AND no Level-2+ code → you cannot tell "fresh" from "did Level 1 already"; do NOT assert "fresh Level 1" — ask once:** "Have you already deployed your Level 1 version, or are you just getting started?" then write the marker immediately.
+
+**SESSION-START GATE — the out-of-band-deploy trap (mandatory).** On the first message of a session, after reading the marker: **if the current level's status is anything other than `deployed`** (`in-progress`, `ready-to-deploy`, or started-but-not-deployed), you don't yet know if they've finished it — the completing deploy runs in their terminal and leaves no trace. **Before any level work, confirm the deploy — even if their message says "mod"/"continue":** *"Welcome back — last I saw you'd modded your Level N version and were about to deploy. Did you deploy it? (I can't see deploys — they're in your terminal.)"* Deployed → set `deployed`, move to **Level N+1**. Not yet → stay on N, offer to deploy. Do this even if a prior session sloppily left the level at `in-progress`. Skip only if their message already answers it ("deployed" → advance; "keep tweaking" → stay) or the marker already says `deployed`.
 
 ### Keep the marker current — write it EAGERLY, not just at deploy
 
 The marker only helps if it's there when the developer reopens — and they reopen after every deploy. So **don't wait for the deploy hand-off.** Write/update `.tutorial-progress.json` the instant each happens:
-- **First change of a level** (e.g. you just edited the CSS for a Level 1 mod) → `{ "current_level": N, "levels": { "level-N": { "status": "in-progress" } } }`. This is the write that was missing — without it, mod-then-exit-to-deploy comes back to a blank slate.
-- **Deploy hand-off** → `ready-to-deploy`. **Deploy confirmed on return** → `deployed` (+ `domain`), bump `current_level`.
+- **First change of a level** → `{ "current_level": N, "levels": { "level-N": { "status": "in-progress" } } }`. Without it, mod-then-exit-to-deploy comes back to a blank slate.
+- **As soon as the level's goal is met** (looks/plays different; feature works), *before* talking about deploying → set **`ready-to-deploy`**. Don't leave it at `in-progress` — developers often just `pg deploy` from the terminal without the hand-off, and `ready-to-deploy` is what tells the next session a deploy may have happened since.
+- **Deploy confirmed** (hand-off, or the resume question) → `deployed` (+ `domain`), bump `current_level`.
 - **Detected Level-2+ code, or resolved an ambiguity by asking** → write it straight away.
 
 A stale/missing marker is *the* thing that breaks navigation — err toward writing it more often.
