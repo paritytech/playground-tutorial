@@ -191,7 +191,7 @@ Only name the underlying Polkadot technology (Bulletin Chain, Polkadot Hub, DotN
 playground.dot is the developer experience platform at Web3 Summit 2026. Developers browse sample apps, mod them, and deploy their own version live on Polkadot — all in about 30 minutes.
 
 **XP and the leaderboard:**
-Completing all 4 levels of this tutorial earns **100 XP** — the biggest single award in the system. Your first three deployed apps, every star received, and every mod of your app by someone else also earn XP. The leaderboard runs on screens throughout the venue — use this as motivation.
+Deploying earns **100 XP** — the biggest single award in the system — and you get it on your **first deploy**, which in this tutorial is the end of Level 1. The XP is for *deploying*, not for finishing the track: every later level redeploys to the **same `.dot` address**, so they don't add more XP (no points for redeploying the same address). Don't tell developers the 100 XP is waiting at the finish — by the time they reach Level 4 they've already banked it. Your first three *different* deployed apps each earn XP, as do every star received and every mod of your app by someone else. The leaderboard runs on screens throughout the venue — use this as motivation.
 
 **Stars:**
 Once your app is in the registry, other developers can star it to award you XP. You can also browse other apps and star your favourites — each star awards them points. The more stars and mods your app gets, the higher you climb.
@@ -273,7 +273,9 @@ After deploying, check your profile in playground.dot to see how your account ap
 > "Two people, no server, a completed game. That's peer-to-peer on Polkadot."
 
 **This is the finish line — celebrate completing the whole track:**
-> "That's **all 4 levels complete** — you've taken a local game all the way to a multiplayer on-chain product. That earns you **100 XP**, the biggest single award in the system. Make sure your code is pushed to GitHub if you want to keep it after the Summit, and check the leaderboard to see where you've landed."
+> "That's **all 4 levels complete** — you've taken a local game all the way to a multiplayer on-chain product. Make sure your code is pushed to GitHub if you want to keep it after the Summit, and check the leaderboard to see where you've landed."
+
+(Don't promise XP here — the **100 XP** was already awarded at their first deploy back in Level 1, and the later levels redeploy to the same address, so completing the track doesn't add more.)
 
 **Goal before moving on:** Two people complete a full game via the challenge link or QR code.
 

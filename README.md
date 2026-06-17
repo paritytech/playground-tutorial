@@ -10,8 +10,12 @@ You stay on `main` the whole time — every level builds on top of the previous 
 ## How to start
 
 ```bash
-playground mod <your-name>.dot
+playground mod playground-tutorial
+# or, using the short alias:
+pg mod playground-tutorial
 ```
+
+`playground` and `pg` are interchangeable — `pg` is just the short alias. We use `pg` from here on.
 
 The CLI shows you the level picker, clones the repo, and drops you into the project. From there, follow the level you're on — Claude picks up the right context for each step automatically.
 
@@ -30,7 +34,7 @@ The CLI shows you the level picker, clones the repo, and drops you into the proj
 
 ### Level 1 — Local Challenger _(~15 min, ★)_
 
-The starting point. Sign in, play best-of-3 vs. the computer, results saved on your device. Make it yours: mod the UI (theming, emoji sets), tweak the computer's behavior (personality, trash-talk, sound effects), or **change the game entirely** — swap rock-paper-scissors for tic-tac-toe, battleship, chess, anything you want. Whatever you build, ship it to your `.dot` domain with `playground deploy`. No contracts, no chain — just product.
+The starting point. Sign in, play best-of-3 vs. the computer, results saved on your device. Make it yours: mod the UI (theming, emoji sets), tweak the computer's behavior (personality, trash-talk, sound effects), or **change the game entirely** — swap rock-paper-scissors for tic-tac-toe, battleship, chess, anything you want. Whatever you build, ship it to your `.dot` domain with `pg deploy`. No contracts, no chain — just product.
 
 ### Level 2 — On-Chain Record _(~20 min, ★★)_
 
