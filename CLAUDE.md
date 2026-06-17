@@ -14,7 +14,7 @@
 >    > 4. **Multiplayer** — challenge another player peer-to-peer, with no server in the middle.
 >    >
 >    > We tackle them one at a time, deploying as we go — and I'll always tell you how many levels are left, so you know the journey isn't over after the first deploy."
-> 2. **Work out which level they're on, and say it — using the detection procedure in ["Detecting which level they're on"](#detecting-which-level-theyre-on) below, not a guess.** The deploy that ends each level happens *outside this session*, so a finished level can look like a fresh checkout. Check the progress marker and the code signals (a `git` diff where available, or reading the source where it isn't — e.g. RevX) **before** defaulting to Level 1, and only treat them as a fresh start when both come back empty. Read the matching `.claude/skills/level-N-*.md` before touching code.
+> 2. **Work out which level they're on, and say it — using the detection procedure in ["Detecting which level they're on"](#detecting-which-level-theyre-on) below, not a guess.** The deploy that ends each level happens *outside this session*, so a finished level can look like a fresh checkout. Check the progress marker and the code signals (a `git` diff where available, or reading the source where it isn't — e.g. RevX) **before** defaulting to Level 1, and only treat them as a fresh start when both come back empty. Read the matching `docs/levels/level-N-*.md` before touching code.
 > 3. **Then handle their actual request as a step inside that level**, following this guide's communication style and the level's skill file.
 >
 > **The bar for firing it is deliberately low: unless the developer's message *explicitly* asks you to skip the tutorial framing (see escape hatch), you fire it.** Treat every *other* reason to skip as a false signal, no matter how reasonable it feels. That includes, but is not limited to:
@@ -32,7 +32,7 @@
 
 ## Session setup — `./setup.sh`
 
-Before changing code, this repo expects `./setup.sh` to have run: it installs dependencies and fetches the `@parity/product-sdk` skills into `.claude/skills/` (per-package SDK reference, *alongside* the tutorial's committed `level-N-*.md` guides — the fetched skills are gitignored subdirectories, kept fresh). In Claude Code it runs automatically via the `SessionStart` hook in `.claude/settings.json`; if you're another tool, run it yourself at the start of the session (it's a fast no-op when already set up; skips gracefully offline or where there's no shell, e.g. RevX). The tutorial's own level guides are always present regardless.
+Before changing code, this repo expects `./setup.sh` to have run: it installs dependencies and fetches the `@parity/product-sdk` skills (per-package SDK reference) into `.claude/skills/` as gitignored subdirectories, kept fresh. In Claude Code it runs automatically via the `SessionStart` hook in `.claude/settings.json`; if you're another tool, run it yourself at the start of the session (it's a fast no-op when already set up; skips gracefully offline or where there's no shell, e.g. RevX). The tutorial's own per-level guides are separate — committed plain-Markdown files in `docs/levels/` (`00-overview.md`, `level-N-*.md`), always present regardless of setup, read by path (see below).
 
 ---
 
@@ -120,12 +120,12 @@ This tutorial runs at Web3 Summit, Berlin, June 2026. The developer in front of 
 
 This document defines **how you communicate** — persona, pacing, vocabulary, framing. It always applies.
 
-The per-level skill files in `.claude/skills/level-N-*.md` contain **technical reference** — exact APIs, package versions, gotchas, code patterns. They do NOT override the communication style below.
+The per-level skill files in `docs/levels/level-N-*.md` contain **technical reference** — exact APIs, package versions, gotchas, code patterns. They do NOT override the communication style below.
 
 **Loading order:**
 
 1. This `CLAUDE.md` is always active. Apply the communication rules in every response.
-2. When the developer says they're working on a specific level (or you've confirmed which level they're on), read `.claude/skills/level-N-*.md` for that level and use it as your source of truth for code, commands, and package names.
+2. When the developer says they're working on a specific level (or you've confirmed which level they're on), read `docs/levels/level-N-*.md` for that level and use it as your source of truth for code, commands, and package names.
 3. Never paste raw code or snippets from those skill files at the developer without first wrapping the **why** in plain English, per the rules below.
 
 If the level skill file and this guide ever appear to conflict, this guide wins for *how* you talk, the skill file wins for *what* the code should be.

@@ -10,7 +10,7 @@
       "difficulty": 1,
       "estimated_minutes": 15,
       "required_tools": ["playground-cli"],
-      "ai_skill_hints": [".claude/skills/level-1-local-challenger.md"],
+      "ai_skill_hints": ["docs/levels/level-1-local-challenger.md"],
       "teaches": [
         "Bulletin hosting",
         "DotNS registration",
@@ -29,7 +29,7 @@
       "estimated_minutes": 20,
       "depends_on": ["level-1"],
       "required_tools": ["playground-cli"],
-      "ai_skill_hints": [".claude/skills/level-2-on-chain-record.md"],
+      "ai_skill_hints": ["docs/levels/level-2-on-chain-record.md"],
       "teaches": [
         "Bulletin writes",
         "Content-addressed storage (CID)",
@@ -49,7 +49,7 @@
       "estimated_minutes": 25,
       "depends_on": ["level-2"],
       "required_tools": ["playground-cli", "cdm", "rustup"],
-      "ai_skill_hints": [".claude/skills/level-3-leaderboard.md"],
+      "ai_skill_hints": ["docs/levels/level-3-leaderboard.md"],
       "teaches": [
         "PVM contract deployment via CDM",
         "On-chain Mapping storage vs off-chain Bulletin storage",
@@ -70,7 +70,7 @@
       "estimated_minutes": 30,
       "depends_on": ["level-3"],
       "required_tools": ["playground-cli"],
-      "ai_skill_hints": [".claude/skills/level-4-multiplayer.md"],
+      "ai_skill_hints": ["docs/levels/level-4-multiplayer.md"],
       "teaches": [
         "Statement Store pub/sub",
         "Cross-account contract interactions",

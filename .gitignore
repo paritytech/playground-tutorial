@@ -12,7 +12,7 @@ package-lock.json
 # OS / editor cruft
 .DS_Store
 
-# Per-developer AI session state (keep .claude/skills, CLAUDE.md — those are intentional team config)
+# Per-developer AI session state (keep CLAUDE.md — that's intentional team config)
 .claude/sessions/
 .claude/cache/
 .claude/settings.local.json
@@ -21,8 +21,7 @@ package-lock.json
 # inferred from code alone). Per-developer; must never be committed into a deploy.
 .tutorial-progress.json
 
-# @parity/product-sdk skills — fetched by ./setup.sh into .claude/skills/ as
-# subdirectories (kept fresh, never stale). The tutorial's own level guides
-# (00-overview.md, level-N-*.md) are flat .md FILES and ARE committed, so only
-# ignore the fetched subdirectories — not the whole skills dir.
-.claude/skills/*/
+# @parity/product-sdk skills — fetched by ./setup.sh into .claude/skills/ (kept
+# fresh, never stale), so the whole dir is ignored. The tutorial's own level
+# guides are committed separately under docs/levels/, not here.
+.claude/skills/

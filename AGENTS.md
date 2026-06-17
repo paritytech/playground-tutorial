@@ -1,6 +1,6 @@
 # AGENTS.md — instructions for any AI coding agent
 
-**SETUP FIRST (where you have a shell):** run `./setup.sh` from the repo root before changing code — it installs dependencies and fetches the `@parity/product-sdk` skills into `.claude/skills/` (alongside the tutorial's committed `level-N-*.md` guides). Fast no-op when already set up; skips gracefully offline. In the RevX WebContainer there's no shell to run it — its SDK skills are provided by the host, and the tutorial's level guides are committed, so carry on. Don't begin the task until setup has run (or you've confirmed it can't).
+**SETUP FIRST (where you have a shell):** run `./setup.sh` from the repo root before changing code — it installs dependencies and fetches the `@parity/product-sdk` skills into `.claude/skills/`. (The tutorial's own per-level guides are committed in `docs/levels/`, separate from the fetched SDK skills.) Fast no-op when already set up; skips gracefully offline. In the RevX WebContainer there's no shell to run it — its SDK skills are provided by the host, and the tutorial's level guides are committed, so carry on. Don't begin the task until setup has run (or you've confirmed it can't).
 
 **The CLI is the playground CLI: `playground`, with `pg` as the short alias** (same binary) — `pg login`, `pg deploy`, `pg mod`. There is no `dot` CLI.
 
@@ -20,7 +20,7 @@ No matter how the developer opens — `start tutorial`, `mod this app`, `edit th
    > 4. **Multiplayer** — challenge another player peer-to-peer, with no server in the middle.
    >
    > We tackle them one at a time, deploying as we go — and I'll always tell you how many levels are left, so you know the journey isn't over after the first deploy."
-2. **Work out which level they're on, and say it — by detection, not a guess.** The deploy that ends each level runs *outside this session*, so a finished level can look like a fresh checkout. Use the procedure in **["Detecting which level they're on"](#detecting-which-level-theyre-on)** below — it works whether or not `git` is available (the RevX WebContainer has no `git`). Read the matching `.claude/skills/level-N-*.md` before touching code.
+2. **Work out which level they're on, and say it — by detection, not a guess.** The deploy that ends each level runs *outside this session*, so a finished level can look like a fresh checkout. Use the procedure in **["Detecting which level they're on"](#detecting-which-level-theyre-on)** below — it works whether or not `git` is available (the RevX WebContainer has no `git`). Read the matching `docs/levels/level-N-*.md` before touching code.
 3. **Then handle their actual request as a step inside that level**, following the communication style in `CLAUDE.md` and the level's skill file.
 
 **The bar for firing it is deliberately low: unless the developer's message _explicitly_ asks you to skip the tutorial framing (see escape hatch), you fire it.** Treat every _other_ reason to skip as a false signal, no matter how reasonable it feels. That includes, but is not limited to:
@@ -91,13 +91,13 @@ Each level ends with a deploy the developer runs themselves (RevX's built-in dep
 ## How this repo's AI guidance is organised
 
 This project ships its full assistant guide in `CLAUDE.md`, and per-level technical
-context in `.claude/skills/level-N-*.md`. Those files **auto-load in Claude Code but
-not in other agents** — so if you are not Claude Code, read them yourself:
+context in `docs/levels/level-N-*.md`. Those are plain reference docs — **no agent
+auto-loads them**, so read the matching one yourself once you know the level:
 
 1. **Read `CLAUDE.md` in full first.** It is the primary instruction set: tutorial
    persona, pacing, vocabulary rules, the four levels, and how to talk to a developer
    who has likely never built on Polkadot before. Follow it for _how_ you communicate.
-2. **Once you know the level, read the matching `.claude/skills/level-N-*.md`.** It is
+2. **Once you know the level, read the matching `docs/levels/level-N-*.md`.** It is
    the source of truth for _what_ the code should be — exact APIs, package names
    (use latest, do not pin), commands, and gotchas.
 3. If `CLAUDE.md` and a skill file ever conflict: `CLAUDE.md` wins for _how_ you talk,

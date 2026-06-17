@@ -7,12 +7,11 @@
 #      coding assistants (Claude Code, Cursor, Windsurf, Copilot, Gemini)
 #      have Polkadot Product SDK guidance on hand while you build.
 #
-# This is the Polkadot Games Tutorial, so .claude/skills/ ALSO contains the
-# tutorial's own hand-written guides — `00-overview.md` and `level-N-*.md`.
-# Those are flat .md FILES, committed to the repo. The fetched @parity/product-sdk
-# skills are DIRECTORIES and are NOT committed (gitignored, fetched fresh so they
-# never go stale). This script only ever creates/replaces the fetched
-# subdirectories; it never touches the committed level files. Safe to re-run.
+# The fetched @parity/product-sdk skills are DIRECTORIES under .claude/skills/ and
+# are NOT committed (gitignored, fetched fresh so they never go stale). The
+# tutorial's own hand-written guides — `00-overview.md` and `level-N-*.md` — live
+# separately in docs/levels/ and ARE committed, so this script never touches them.
+# It only ever creates/replaces the fetched subdirectories. Safe to re-run.
 # Pass --refresh to re-pull the skills even if they're already present.
 #
 #   ./setup.sh            # install deps + fetch skills if missing
@@ -41,8 +40,7 @@ else
 fi
 
 # --- 2. @parity/product-sdk skills ------------------------------------------
-# "Already populated" = at least one fetched skill DIRECTORY is present. The
-# committed level *files* don't count, so a fresh clone still fetches.
+# "Already populated" = at least one fetched skill DIRECTORY is present.
 if [ -n "$(find "$SKILLS_DEST" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || true)" ] \
    && [ "${1:-}" != "--refresh" ]; then
   echo "==> product-sdk skills already present in ${SKILLS_DEST}/; pass --refresh to re-pull."
@@ -50,7 +48,7 @@ if [ -n "$(find "$SKILLS_DEST" -mindepth 1 -maxdepth 1 -type d 2>/dev/null || tr
 fi
 
 if ! command -v git >/dev/null 2>&1; then
-  echo "    git not found — skipping skills fetch (the tutorial's own level skills are still here)." >&2
+  echo "    git not found — skipping SDK skills fetch (the tutorial's own level guides in docs/levels/ are unaffected)." >&2
   exit 0
 fi
 
@@ -71,11 +69,11 @@ if [ ! -d "$tmp/$SKILLS_SUBDIR" ]; then
 fi
 
 mkdir -p "$SKILLS_DEST"
-# Replace ONLY the fetched skill subdirectories; leave the committed
-# tutorial level files (00-overview.md, level-N-*.md) untouched.
+# Replace ONLY the fetched skill subdirectories (everything in here is fetched;
+# the tutorial's own level guides live in docs/levels/, not here).
 find "$SKILLS_DEST" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
 cp -R "$tmp/$SKILLS_SUBDIR/." "$SKILLS_DEST/"
 
 echo "==> Done. Fetched product-sdk skills now in ${SKILLS_DEST}/:"
 find "$SKILLS_DEST" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | sed 's/^/      - /'
-echo "    (plus the tutorial's committed level guides: 00-overview.md, level-1..4-*.md)"
+echo "    (the tutorial's own level guides live in docs/levels/, separate from these)"

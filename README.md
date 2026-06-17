@@ -76,7 +76,8 @@ Runs on `http://localhost:5173`. Open it inside a Polkadot host — `dot.li` in 
 
 ```
 quests.json                  # Level manifest
-.claude/skills/              # Per-level AI context
+docs/levels/                 # Per-level AI context (00-overview + level-1..4)
+.claude/skills/              # Fetched @parity/product-sdk skills (gitignored)
 src/
 ├── App.tsx                  # Routing + account selector
 ├── utils.ts                 # Account flow, helpers
