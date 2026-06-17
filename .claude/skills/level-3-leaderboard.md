@@ -17,28 +17,39 @@ Deploy a Rust/PVM contract on **Paseo Asset Hub Next** that indexes players by
 address. The contract stores `(cid, points)` per player; the game JSON itself
 stays on Bulletin (Level 2). The contract is the index; Bulletin is the data.
 
-## Toolchain
+## How it builds and deploys — it's all `pg deploy`
 
-- `rustup`
-- `cargo-pvm-contract` (the `pvm-contract-sdk` contract builder). Install the
-  latest from the release; if it still documents an SDK branch, use the current
-  one (`sm/cdm`), not any legacy `charles/cdm-integration` branch:
-  ```sh
-  HOST_TARGET=$(rustc -vV | awk '/^host:/ {print $2}')
-  cargo install --force --locked --target "$HOST_TARGET" \
-    --git https://github.com/paritytech/cargo-pvm-contract.git --branch sm/cdm \
-    cargo-pvm-contract
-  ```
-  (Use the crates.io release once published.)
-- `cdm` CLI (latest). The current `cdm` takes `--registry-address` as a
-  first-class flag — there is **no** binary-patched `cdm-paseo-next` and **no**
-  vendored `contract-registry` crate anymore. If you see those in old notes,
-  ignore them; the flat-CDM registry already exists on v2.
-- A funded, mapped account: `cdm account set` imports a mnemonic to
-  `~/.cdm/accounts.json`; `cdm account bal -n paseo` checks PAS + Bulletin
-  allowance; `cdm account map -n paseo` does the one-time Revive mapping
-  (required before the first deploy). Fund via
-  `https://faucet.polkadot.io/?parachain=1500`.
+**There is no separate contract account, no mnemonic to import, and no faucet.**
+The contract is built, deployed, and registered as part of the same `pg deploy`
+the developer runs to ship every level.
+
+- **The toolchain is already installed.** `pg login` installs the full Rust
+  toolchain (rustup, nightly, rust-src) and `cargo-pvm-contract` (pinned to a
+  `main` commit by the CLI). Never run `cargo install` by hand or pin an SDK
+  branch — if a tool is missing, the fix is `pg login`, not a manual install.
+- **The product account signs everything.** `pg deploy` builds the contract,
+  deploys it to Asset Hub, publishes its metadata to Bulletin, and registers
+  the package — all signed by the developer's host-managed product account, the
+  same account their app uses at runtime. There is no `~/.cdm/accounts.json`
+  and no `cdm account set`.
+- **No funding step.** The active network uses allowances, not a faucet. There
+  is no "grab test tokens" step; a payment-related deploy failure is an
+  allowance/authorization issue, not a faucet trip.
+- **Mapping is automatic.** Revive maps the account on its first transaction —
+  the developer never runs `cdm account map`.
+
+When the contract is ready, deploy is simply:
+
+```sh
+pg deploy        # answers "did your contracts change?" → yes → builds,
+                 # deploys, and registers the contract, then ships the frontend
+```
+
+`pg deploy` writes the deployed address + ABI into `cdm.json`. The deploy itself
+runs outside this session — see the deploy hand-off in CLAUDE.md.
+
+(For a quick local compile/ABI check before deploying, `cargo pvm-contract build
+-p leaderboard` works, but it is optional — `pg deploy` builds for you.)
 
 ## Cargo manifests
 
@@ -46,7 +57,7 @@ stays on Bulletin (Level 2). The contract is the index; Bulletin is the data.
 
 ```toml
 [workspace.dependencies]
-pvm-contract-sdk = { git = "https://github.com/paritytech/cargo-pvm-contract", branch = "sm/cdm", features = ["alloc"] }
+pvm-contract-sdk = { git = "https://github.com/paritytech/cargo-pvm-contract", branch = "main", features = ["alloc"] }
 polkavm-derive = "0.31"
 picoalloc = "5.2"
 ```
@@ -152,38 +163,18 @@ mod leaderboard {
 }
 ```
 
-`cargo pvm-contract build` writes `target/release/leaderboard.polkavm` and
-`leaderboard.abi.json` — confirm the ABI shows `getPlayerAt() -> address`,
-`getPlayerCid(address)`, etc., and `register` as `nonpayable`.
+The build (run by `pg deploy`, or by an optional local `cargo pvm-contract
+build -p leaderboard`) produces `leaderboard.polkavm` and `leaderboard.abi.json`
+— the ABI should show `getPlayerAt() -> address`, `getPlayerCid(address)`, etc.,
+and `register` as `nonpayable`.
 
-## Build + deploy flow (from scratch)
+## What `pg deploy` produces
 
-```sh
-# 1. compile the contract
-cargo pvm-contract build --manifest-path Cargo.toml -p leaderboard
-
-# 2. regenerate the CDM manifest from the new package metadata
-rm -rf .cdm cdm.json
-cdm build
-
-# 3. map the signing account on Revive (idempotent; needed before first deploy)
-cdm account map -n paseo
-
-# 4. deploy + register into the flat-CDM registry
-npm run deploy        # = cdm deploy -n paseo --registry-address 0xf62c2ece29cd8df2e10040ecfa5a894a5c5d9cb0 \
-                      #     --assethub-url wss://paseo-asset-hub-next-rpc.polkadot.io \
-                      #     --bulletin-url  wss://paseo-bulletin-next-rpc.polkadot.io
-
-# 5. read the deployed address/abi back from the registry into cdm.json
-cdm i -n paseo --registry-address 0xf62c2ece29cd8df2e10040ecfa5a894a5c5d9cb0 \
-  --assethub-url wss://paseo-asset-hub-next-rpc.polkadot.io \
-  --ipfs-gateway-url https://paseo-bulletin-next-ipfs.polkadot.io/ipfs @rps/leaderboard
-```
-
-The resulting `cdm.json` is the **flat** shape — top-level `registry`,
-`dependencies: { "@rps/leaderboard": "latest" }`, and `contracts["@rps/leaderboard"]`
-with `version`, `address`, `abi`, `metadataCid`. There is **no** `targets` block
-and **no** target-hash key (`acc2c3b5…`) — those were the old shape.
+`pg deploy` writes the deployed address + ABI into `cdm.json` for the frontend
+to read. The shape is **flat** — top-level `registry`, `dependencies:
+{ "@rps/leaderboard": "latest" }`, and `contracts["@rps/leaderboard"]` with
+`version`, `address`, `abi`, `metadataCid`. There is no `targets` block and no
+target-hash key — those were the old shape.
 
 ## Frontend integration
 
@@ -192,9 +183,16 @@ Add the contract layer to `src/utils.ts`, lazy-initing it on first method call
 comes from the Level 1 `SignerManager` state
 (`const account = signerManager.getState().selectedAccount`) — `account.address`
 is the SS58 origin, `account.getSigner()` the signer, `account.h160Address` the
-contract key. The init **must map the account before resolving live addresses**
-— `fromLiveClient` immediately queries the registry, and an unmapped origin
-fails with `AccountUnmapped`:
+contract key.
+
+> **Source of truth for the live API is the auto-downloaded
+> `product-sdk-contracts` skill** (fetched by `./setup.sh`, kept fresher than
+> this file). If the snippet below and that skill diverge, follow the skill.
+> In particular, on the current network Revive auto-maps accounts, so an
+> explicit `ensureContractAccountMapped` step may no longer be needed — check
+> the skill before adding one.
+
+The pattern (illustrative — confirm against the skill):
 
 ```ts
 import { createChainClient } from "@parity/product-sdk-chain-client";
@@ -243,18 +241,18 @@ copies. (`ContractManager` also accepts a `signerManager` option instead of
 ## Common gotchas
 
 - **`ContractLiveAddressResolutionError: Failed to resolve live address`** = the
-  registry view query failed, almost always because the query origin isn't
-  Revive-mapped. Map the account *before* `fromLiveClient` (see above). To
-  confirm it's mapping (not a missing registration), a mapped origin returns
-  `{ success: true, value: { isSome: true, value: "0x…" } }` while an unmapped
-  one returns `success: false → Revive::AccountUnmapped`.
+  registry view query failed. On older networks this meant the query origin
+  wasn't Revive-mapped; the current network auto-maps accounts, so first check
+  the `product-sdk-contracts` skill for the current init/mapping requirements
+  rather than reintroducing a manual map step.
 - **`PJS does not support this signed-extension: AsPgas`** = the tx was signed
   outside the host product-account flow. Use `account.getSigner()` from the
   Level 1 `SignerManager` (its `HostProvider` pins the `createTransaction`
   path internally) — never wire a signer by hand.
 - **`DuplicateContract`** on re-deploy is harmless (deterministic address).
-- **`Invalid::Payment`** = the deployer needs PAS (Asset Hub for the contract,
-  Bulletin allowance for the metadata upload).
+- **Payment / `Invalid::Payment`-style failures** = an allowance/authorization
+  problem, not a funding one. The active network has no faucet; do not send the
+  developer to "grab test tokens." Surface it as an allowance issue.
 - **H160 vs SS58**: the contract keys by H160 (`account.h160Address`, provided
   by `SignerAccount`); SS58 (`account.address`) is only for origin/signing.
   Don't roll your own keccak.
@@ -263,10 +261,10 @@ copies. (`ContractManager` also accepts a `signerManager` option instead of
 
 ## Acceptance check
 
-- `cargo pvm-contract build` + `cdm build` + `npm run deploy` + `cdm i` succeed;
-  `cdm.json` has the flat shape with the registry and `@rps/leaderboard` address.
-- A fresh player triggers one `Revive.map_account()` signature, then `register()`,
-  then `update_result()` per match.
+- `pg deploy` builds, deploys, and registers the contract; `cdm.json` has the
+  flat shape with the registry and `@rps/leaderboard` address.
+- A fresh player can `register()` then `update_result()` per match (mapping, if
+  the network still needs it, happens automatically on first tx).
 - Page refresh resolves the current address live from the registry.
 - Leaderboard lists registered players sorted by points.
 
@@ -278,6 +276,8 @@ copies. (`ContractManager` also accepts a `signerManager` option instead of
 - Don't use `ContractManager.fromClient` (snapshot) unless you intentionally want
   the installed address — the app wants live resolution.
 - Don't import `@polkadot-api/sdk-ink` — dropped from product-sdk-contracts.
-- Don't reintroduce the cdm 0.1.0 binary patch or vendored `contract-registry`
-  crate — the flat-CDM registry exists and `--registry-address` is supported.
+- Don't set up a standalone `cdm` account, import a mnemonic, or run a manual
+  `cdm deploy` — `pg deploy` builds, deploys, and registers using the
+  developer's product account. A stale standalone `cdm` may already be on disk
+  from an older setup — ignore it; it's not part of this flow.
 - Don't construct contract addresses by hand; deploy writes them into `cdm.json`.
