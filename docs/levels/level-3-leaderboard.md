@@ -53,11 +53,19 @@ runs outside this session — see the deploy hand-off in CLAUDE.md.
 
 ## Cargo manifests
 
-**Workspace `Cargo.toml`** — one SDK dependency:
+**Workspace `Cargo.toml`** — create this at the project root:
 
 ```toml
+[workspace]
+resolver = "2"
+members = ["contracts/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
 [workspace.dependencies]
-pvm-contract-sdk = { git = "https://github.com/paritytech/cargo-pvm-contract", branch = "main", features = ["alloc"] }
+pvm-contract-sdk = { git = "https://github.com/paritytech/cargo-pvm-contract", rev = "90f3582a999ee843f79c56378392cfae3c05f0f3", features = ["alloc"] }
 polkavm-derive = "0.31"
 picoalloc = "5.2"
 ```
@@ -69,6 +77,18 @@ importing other CDM packages (`cdm::import!`) or adds SCALE structs.
 metadata, NOT in the Rust macro:
 
 ```toml
+[package]
+name = "leaderboard"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[[bin]]
+name = "leaderboard"
+path = "lib.rs"
+
 [features]
 abi-gen = ["pvm-contract-sdk/abi-gen"]
 
@@ -81,8 +101,15 @@ polkavm-derive = { workspace = true }
 picoalloc = { workspace = true }
 ```
 
-Package names are globally owned in the registry — use an app-specific
-namespace (`@rps/leaderboard`), not `@example/...`.
+The `lib.rs` path above is important: this tutorial puts the source at
+`contracts/leaderboard/lib.rs`, so Cargo needs explicit `[lib]` and `[[bin]]`
+targets. Keep the local crate/bin name `leaderboard`; the globally owned,
+app-specific registry name is only `[package.metadata.cdm].package`, such as
+`@rps/leaderboard`, not `@example/...`.
+
+Cargo may warn that `lib.rs` is present in both a `lib` target and a `bin`
+target. That warning is expected for this setup; the error to fix is anything
+after it, such as a missing dependency or a typo in one of the manifests.
 
 ## Contract shape — receiver-based SDK (`contracts/leaderboard/lib.rs`)
 
